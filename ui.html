@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Job Fit Assessment Test</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.4;margin:0;background:#f7fafc;color:#0f172a}
+    .container{max-width:900px;margin:40px auto;padding:20px;background:#fff;border-radius:8px;box-shadow:0 6px 24px rgba(2,6,23,0.08)}
+    h1{font-size:20px;margin:0 0 12px}
+    label{display:block;margin:12px 0 6px;font-weight:600}
+    textarea{width:100%;min-height:140px;padding:10px;border:1px solid #e6e9ef;border-radius:6px;font-family:inherit}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .full{grid-column:1/-1}
+    button{background:#0369a1;color:#fff;border:0;padding:10px 14px;border-radius:6px;cursor:pointer}
+    button[disabled]{opacity:0.6;cursor:not-allowed}
+    pre{background:#0f172a;color:#e6eef8;padding:12px;border-radius:6px;overflow:auto}
+    .meta{margin-top:12px;color:#334155}
+    @media(max-width:700px){.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Job Fit Assessment Test</h1>
+    <form id="assessmentForm">
+      <div class="row">
+        <div class="full">
+          <label for="resume">Resume Text</label>
+          <textarea id="resume" name="resume_text" required placeholder="Paste the candidate's resume text here"></textarea>
+        </div>
+        <div class="full">
+          <label for="jd">Job Description</label>
+          <textarea id="jd" name="jd" required placeholder="Paste the job description here"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button id="submitBtn" type="submit">Submit</button>
+        <span class="meta" id="status" style="margin-left:12px"></span>
+      </div>
+    </form>
+
+    <div id="result" style="margin-top:18px;display:none">
+      <h2 style="font-size:16px;margin:0 0 8px">Assessment Result</h2>
+      <pre id="resultPre"></pre>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('assessmentForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    const resultPre = document.getElementById('resultPre');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = '';
+      resultEl.style.display = 'none';
+
+      const resumeText = document.getElementById('resume').value.trim();
+      const jdText = document.getElementById('jd').value.trim();
+
+      if (!resumeText || !jdText) {
+        statusEl.textContent = 'Please provide both resume text and job description.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Assessing...';
+      statusEl.textContent = 'Sending request...';
+
+      try {
+        const resp = await fetch('https://scooter-backend.salmonpebble-101e17d0.canadacentral.azurecontainerapps.io/job_fit_assessment_test/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume_text: resumeText, jd: jdText })
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(`Server responded ${resp.status}: ${text}`);
+        }
+
+        const data = await resp.json();
+        if (data && data.job_fit_assessment) {
+          resultPre.textContent = JSON.stringify(data.job_fit_assessment, null, 2);
+          resultEl.style.display = 'block';
+          statusEl.textContent = 'Assessment completed.';
+        } else {
+          throw new Error('Unexpected response format');
+        }
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+        resultPre.textContent = '';
+        resultEl.style.display = 'none';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+      }
+    });
+  </script>
+</body>
+</html>
